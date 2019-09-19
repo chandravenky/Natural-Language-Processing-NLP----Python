@@ -1,0 +1,79 @@
+import fasttext
+import pandas as pd
+
+from sklearn.metrics import confusion_matrix, classification_report
+
+languages = ["finnish", "german", "portuguese","english", "french", "swedish"]
+
+filename = input()
+data = pd.read_csv(str(filename)+ str(".csv"))
+
+doc_set = []
+for lang in languages:       
+    sentences = list(data.Comment)
+    doc_set+=[(data.actl_lang[i], sentences[i:i+50]) for i in range(0, len(sentences), 50)]
+	
+from nltk import ngrams
+from string import punctuation
+
+def create_trigram_dataset(doc_set):
+    """
+    Input: Doc_Set : List of <Language, Sentences> pairs
+    Output: List of <Language, Word Trigram> pairs
+    """
+    result = []
+    for i in doc_set:        
+        for k in i[1]:            
+            punc = list(punctuation)            
+            temp = filter(lambda x: x not in punc+[','"'","!",":"], k)
+            temp = map(lambda x: x.lower(), temp)
+            trigrams = ngrams(temp,3)
+            try:
+                for j in trigrams:
+                    result.append([i[0],j])
+            except:
+                pass
+    return result
+	
+tri_gram_dataset = create_trigram_dataset(doc_set)
+
+#Split into train and test
+from random import shuffle
+from sklearn.cross_validation import train_test_split
+
+shuffle(tri_gram_dataset)
+train_set, test_set = train_test_split(tri_gram_dataset, test_size = 0.20)
+
+def create_train_file(doc_set,fname):
+    """ Creates a text file such that for each tri-gram: <__label__, trigram>
+        where label is the language. FastText takes a file as input for training.
+        Returns: File name of the created file.
+    """ 
+    train_file = open(fname,"w+")
+    for i in doc_set:        
+        label = "__label__"+i[0]
+        text = " ".join(i[1])
+        train_file.write(str(label.encode('utf8'))+ " " + str(text.encode('utf8')) + "\n")
+        
+    train_file.close()
+    return fname
+	
+train_filename = create_train_file(train_set,"Train_File.txt")
+
+model = fasttext.supervised(train_filename, 'model', min_count=1, epoch=10, ws=3, label_prefix='__label__', dim=50)
+
+def get_test_pred(test_set):
+    """
+    Input: TestSet : <Language, WordTrigrams> Pairs
+    Ouput: List of <ActualLabel, PredictedLabel>
+    """
+    y_actual, y_pred = [], []
+    for i in test_set:
+        y_actual.append(i[0])
+        pred = model.predict([" ".join(i[1])])[0][0]
+        y_pred.append(pred)
+    return [y_actual, y_pred]
+	
+y_actual, y_pred = get_test_pred(test_set)
+
+print (classification_report(y_actual, y_pred))
