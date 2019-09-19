@@ -1,0 +1,41 @@
+"""
+Code description: Filters out non-english comments/reviews
+"""
+
+import pandas as pd
+from rpy2 import interactive as r
+from rpy2.interactive import packages
+cld3 = r.packages.importr('cld3')
+
+print("Enter csv filename without extension, review column header should have name 'Comment'")
+x= input()
+
+data = pd.read_csv(str(x)+ str(".csv"))
+
+def scrap_data(data):
+'''
+Creates a dataframe with only english language comments
+Argument: dataset having comments/reviews as the column comment
+Returns: dataframe
+'''
+lang_detect_list=[]
+
+	for i in range(len(data.Comment)):
+		lang_detect = cld3.detect_language(data.Comment[i])
+		try:
+			lang_detect_list.append(str(lang_detect).strip().split('"')[1])
+		except:
+			lang_detect_list.append("NA")
+		i=i+1
+
+	all_lang_data = pd.DataFrame({'Comment':data.Comment, 'Language_detected':lg})
+
+	english_lang_data = output[output['Language_detected'] == 'en']
+
+def save_output():
+'''
+Saves the output dataframe as csv
+Argument: Dataframe
+Returns: CSV file saved
+'''
+	english_lang_data.to_csv('x.csv', sep=',')
