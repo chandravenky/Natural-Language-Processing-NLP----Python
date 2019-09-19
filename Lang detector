@@ -1,0 +1,77 @@
+from nltk.corpus import stopwords
+import pandas as pd
+import string
+
+stop_words_list = {}
+language = None,
+word_list=[]
+cleaned_sentences=[]
+lang_list=[]
+
+print("Enter input csv filename without extension, review column header should have name 'Comment'")
+filename= input()
+data = pd.read_csv(str(filename)+ str(".csv"))
+
+print("Enter threshold")
+threshold= float(input())
+
+sentences_list=list(data.Comment)
+
+languages = ["english", "french", "swedish"]
+
+for lang in languages:
+    stop_words_list[lang] = set(stopwords.words(lang))
+	
+def remove_punc(sentences_list):
+	"""
+	Removes the punctuations from the sentences
+	Argument: List with sentences
+	Returns: List with sentences without punctuation
+	"""	
+	if len(sentences_list)>1:
+		for sentence in sentences_list:
+			table = str.maketrans({key: None for key in string.punctuation})
+			sentence = sentence.translate(table)
+			cleaned_sentences.append(sentence.strip().lower())
+	else:
+		table = str.maketrans({key: None for key in string.punctuation})
+		sentence = str(sentences_list).translate(table)
+		cleaned_sentences.append(sentence.strip().lower())
+	return cleaned_sentences
+	
+def lang_detect(cleaned_sentences):
+	"""
+	Returns a list with detected language as per threshold
+	Argument: List with sentences
+	Returns: List with language detected for the sentence
+	"""
+	for sentence in range(len(cleaned_sentences)):
+		words=cleaned_sentences[sentence].split()
+		word_list.append(words)
+
+	for i in range(len(word_list)):
+		word_list_set = set(word_list[i])
+		data_entry_flag=0
+		for lang in languages:
+			score = float(len(stop_words_list[lang].intersection(word_list_set)))/len(word_list_set)
+			if score > threshold:
+				language = lang
+				lang_list.append(language)
+				data_entry_flag=1
+				break
+		if data_entry_flag==0:
+			lang_list.append("NA")
+		i=i+1
+	detected_language = pd.DataFrame({'Comment':data.Comment, 'Actual_language' : data.Language, 'Language_detected':lang_list})
+	return detected_language
+	
+def save_output(detected_language):
+	"""
+	Saves the output dataframe as csv
+	Argument: Dataframe
+	Returns: CSV file saved
+	"""
+	detected_language.to_csv(str(filename)+ str("_language") + str(".csv"), sep=',')
+	del detected_language
+	
+save_output(lang_detect(remove_punc(sentences_list)))
