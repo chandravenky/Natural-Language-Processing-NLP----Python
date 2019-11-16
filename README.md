@@ -1,2 +1,2 @@
 # Sentence-Analysis
-Sentence analysis using R
+Sentence analysis using Python
